@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xola Custom Checkout Demo - Stripe Payment Element</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+        }
+
+        .header {
+            height: 120px;
+            position: relative;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-color: #f0f0f0;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #ddd;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 20px 0 15px 0;
+            color: #333;
+        }
+
+        .section-header {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .timeslots-container {
+            margin-bottom: 30px;
+        }
+
+        .timeslot-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            background: white;
+            transition: all 0.2s ease;
+        }
+
+        .timeslot-card:hover {
+            border-color: #007bff;
+            box-shadow: 0 2px 8px rgba(0,123,255,0.1);
+        }
+
+        .timeslot-card.selected {
+            border-color: #007bff;
+            background-color: #f8f9ff;
+        }
+
+        .timeslot-time {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .timeslot-capacity {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .pricing-units {
+            font-size: 14px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            background: white;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.1);
+        }
+
+        .quantity-controls {
+            margin-bottom: 15px;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+
+        .quantity-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .quantity-label {
+            font-weight: 500;
+        }
+
+        .quantity-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .quantity-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .quantity-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .quantity-btn:disabled {
+            background: #f5f5f5;
+            color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .quantity-display {
+            min-width: 30px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            background: #0056b3;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .summary-section {
+            background: #f8f9fa;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .summary-total {
+            border-top: 1px solid #ddd;
+            padding-top: 8px;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        #payment-element {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+            background: white;
+        }
+
+        .error {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 20px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .step {
+            margin-bottom: 30px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .step-hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header"></div>
+
+        <div class="content">
+            <h1>Xola Custom Checkout Demo - Stripe Payment Element</h1>
+            <!-- Step 1: Customer Information -->
+            <div class="step" id="step-customer">
+                <h2 id="experience-name"></h2>
+                <h2>Customer Information</h2>
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="customer-name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="customer-email" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="tel" id="customer-phone" required>
+                </div>
+                <button id="proceed-timeslots" class="btn">Continue to Timeslots</button>
+            </div>
+
+            <!-- Step 2: Select Timeslot -->
+            <div class="step step-hidden" id="step-timeslots">
+                <h2>Select your time</h2>
+                <div class="section-header" id="timeslots-header">Available times</div>
+                <div id="timeslots-loading" class="loading">Loading available times...</div>
+                <div id="timeslots-container" class="timeslots-container"></div>
+                <div id="timeslots-error" class="error" style="display: none;"></div>
+            </div>
+
+            <!-- Step 3: Select Quantities -->
+            <div class="step step-hidden" id="step-quantities">
+                <h2>Select Quantities</h2>
+                <div id="quantities-container"></div>
+                <button id="proceed-payment" class="btn" disabled>Continue to Payment</button>
+            </div>
+
+            <!-- Step 4: Payment -->
+            <div class="step step-hidden" id="step-payment">
+                <h2>Summary</h2>
+                <div id="booking-summary" class="summary-section"></div>
+
+                <h2>Payment Method</h2>
+                <form id="payment-form">
+                    <div id="payment-element"></div>
+                    <div id="card-errors" class="error"></div>
+                    <button type="submit" id="submit-button" class="btn">Complete Booking</button>
+                </form>
+            </div>
+
+            <!-- Success Message -->
+            <div class="step step-hidden" id="step-success">
+                <div class="success">
+                    <h2>Booking Confirmed!</h2>
+                    <div id="confirmation-details"></div>
+                </div>
+            </div>
+
+            <!-- Global Loading -->
+            <div id="global-loading" class="loading hidden">
+                Processing your booking...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const PRODUCT_ID = '6524fb00b41671e33b078de1';
+        const SELLER_ID = '6524fa270203a6047e0bc435';
+        const API_BASE = 'https://sandbox.xola.com/api';
+
+        // Global state
+        let selectedTimeslot = null;
+        let quantities = {};
+        let stripe = null;
+        let elements = null;
+        let cardElement = null;
+        let currentPurchase = null;
+        let organizerApiKey = null;
+        let experience = null;
+
+        // Initialize the app
+        async function init() {
+            await fetchExperience();
+            await initializeStripe();
+        }
+
+        // Fetch experience details
+        async function fetchExperience() {
+            try {
+                const response = await fetch(`${API_BASE}/experiences/${PRODUCT_ID}`);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch experience: ${response.status}`);
+                }
+
+                experience = await response.json();
+
+                // Update experience name
+                document.getElementById('experience-name').textContent = experience.name;
+
+                const header = document.querySelector('.header');
+                const url = `${API_BASE}/experiences/${PRODUCT_ID}/medias/default?size=medium`
+                header.style.backgroundImage = `url(${url})`;
+
+            } catch (error) {
+                console.error('Error fetching experience:', error);
+                // Keep default values if fetch fails
+            }
+        }
+
+        // Fetch available timeslots for today
+        async function fetchTimeslots() {
+            const loading = document.getElementById('timeslots-loading');
+            const container = document.getElementById('timeslots-container');
+            const errorDiv = document.getElementById('timeslots-error');
+
+            try {
+                const today = new Date().toISOString().split('T')[0];
+                const response = await fetch(`${API_BASE}/timeslots?product=${PRODUCT_ID}&date=${today}&seller=${SELLER_ID}&include=units`);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch timeslots: ${response.status}`);
+                }
+
+                const data = await response.json();
+                loading.style.display = 'none';
+
+                if (!data || !data.data || data.data.length === 0) {
+                    container.innerHTML = '<p>No available times for today.</p>';
+                    return;
+                }
+
+                // Update header with actual date
+                const firstTimeslot = data.data[0];
+                if (firstTimeslot) {
+                    const date = new Date(firstTimeslot.arrivalDatetime);
+                    const dateStr = date.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                    });
+                    document.getElementById('timeslots-header').textContent = `Available slots for ${dateStr} Select your time`;
+                }
+
+                displayTimeslots(data.data);
+            } catch (error) {
+                loading.style.display = 'none';
+                errorDiv.textContent = `Error: ${error.message}`;
+                errorDiv.style.display = 'block';
+                console.error('Error fetching timeslots:', error);
+            }
+        }
+
+        // Display timeslots in the UI
+        function displayTimeslots(timeslots) {
+            const container = document.getElementById('timeslots-container');
+
+            timeslots.forEach(timeslot => {
+                if (!timeslot.canBook) return;
+
+                const card = document.createElement('div');
+                card.className = 'timeslot-card';
+
+                // Format time
+                const arrivalTime = new Date(timeslot.arrivalDatetime);
+                const endTime = new Date(timeslot.end);
+
+                const timeFormat = {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                };
+
+                const unitsHtml = timeslot.units.map(unit =>
+                    `${unit.code.charAt(0).toUpperCase() + unit.code.slice(1)}: $${unit.price}`
+                ).join(', ');
+
+                card.innerHTML = `
+                    <div class="timeslot-time">
+                        ${arrivalTime.toLocaleTimeString('en-US', timeFormat)} - ${endTime.toLocaleTimeString('en-US', timeFormat)}
+                    </div>
+                    <div class="timeslot-capacity">
+                        ${timeslot.capacity.open} spots available
+                    </div>
+                    <div class="pricing-units">
+                        ${unitsHtml}
+                    </div>
+                `;
+
+                card.onclick = () => selectTimeslot(timeslot, card);
+                container.appendChild(card);
+            });
+        }
+
+        // Select a timeslot
+        function selectTimeslot(timeslot, element) {
+            // Remove previous selection
+            document.querySelectorAll('.timeslot-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // Select new timeslot
+            element.classList.add('selected');
+            selectedTimeslot = timeslot;
+
+            // Initialize quantities
+            quantities = {};
+            timeslot.units.forEach(unit => {
+                quantities[unit.code] = 0;
+            });
+
+            // Show quantities step
+            displayQuantities();
+            showStep('step-quantities');
+        }
+
+        // Display quantity selectors
+        function displayQuantities() {
+            const container = document.getElementById('quantities-container');
+
+            let html = '';
+            selectedTimeslot.units.forEach(unit => {
+                html += `
+                    <div class="quantity-controls">
+                        <div class="quantity-row">
+                            <div class="quantity-label">${unit.code.charAt(0).toUpperCase() + unit.code.slice(1)}</div>
+                            <div class="quantity-selector">
+                                <button type="button" class="quantity-btn" onclick="updateQuantity('${unit.code}', -1)">−</button>
+                                <span class="quantity-display" id="qty-${unit.code}">0</span>
+                                <button type="button" class="quantity-btn" onclick="updateQuantity('${unit.code}', 1)">+</button>
+                            </div>
+                        </div>
+                        <div style="font-size: 14px; color: #666;">$${unit.price} each</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // Update quantity
+        function updateQuantity(code, delta) {
+            quantities[code] = Math.max(0, quantities[code] + delta);
+            document.getElementById(`qty-${code}`).textContent = quantities[code];
+
+            // Enable/disable proceed button
+            const hasQuantities = Object.values(quantities).some(qty => qty > 0);
+            document.getElementById('proceed-payment').disabled = !hasQuantities;
+        }
+
+        // Initialize Stripe
+        async function initializeStripe() {
+            try {
+                // Fetch seller info to get Stripe public key
+                const response = await fetch(`${API_BASE}/sellers/${SELLER_ID}`);
+                const seller = await response.json();
+
+                const publicKey = seller.defaultGateway?.publicKey;
+                if (!publicKey) {
+                    throw new Error('No Stripe public key found');
+                }
+
+                stripe = Stripe(publicKey);
+            } catch (error) {
+                console.error('Error initializing Stripe:', error);
+                alert('Failed to initialize payment system');
+            }
+        }
+
+        // Event handlers
+        document.getElementById('proceed-timeslots').onclick = () => {
+            const name = document.getElementById('customer-name').value.trim();
+            const email = document.getElementById('customer-email').value.trim();
+            const phone = document.getElementById('customer-phone').value.trim();
+
+            if (!name || !email || !phone) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            fetchTimeslots();
+            showStep('step-timeslots');
+        };
+
+        document.getElementById('proceed-payment').onclick = async () => {
+            const submitButton = document.getElementById('proceed-payment');
+            try {
+                // Create purchase in HOLD state
+                const purchase = await createPurchaseHold();
+                const paymentLineItem = purchase.lineItems.find(item =>
+                    item.type === 'payment' && item.status === 'pending' && item.payment && item.payment.paymentIntent
+                );
+
+                if (!paymentLineItem) {
+                    throw new Error('No payment intent found');
+                }
+
+                const clientSecret = paymentLineItem.payment.paymentIntent.clientSecret;
+                elements = stripe.elements({ clientSecret });
+                const paymentElement = elements.create("payment");
+                updateBookingSummary(purchase);
+                // Mount when payment step is shown
+                setTimeout(() => {
+                    if (document.getElementById('payment-element')) {
+                        paymentElement.mount('#payment-element');
+                    }
+                }, 100);
+                showStep('step-payment');
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+                submitButton.disabled = false;
+                showGlobalLoading(false);
+            }
+
+
+        };
+
+        // Handle form submission
+        document.getElementById('payment-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const submitButton = document.getElementById('submit-button');
+            submitButton.disabled = true;
+
+            showGlobalLoading(true);
+
+            try {
+
+                // Confirm payment with Stripe
+                await confirmPayment(currentPurchase);
+
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+                submitButton.disabled = false;
+                showGlobalLoading(false);
+            }
+        });
+
+        // Update booking summary
+        function updateBookingSummary() {
+            const summaryDiv = document.getElementById('booking-summary');
+            let total = currentPurchase.amount;
+            let html = '';
+
+            currentPurchase.items.forEach(item => {
+                const subtotal = item.amount;
+                html += `
+                        <div class="summary-row">
+                            <span>${item.name} (Quantity: ${item.quantity} )</span>
+                            <span>$${subtotal}</span>
+                        </div>
+                    `;
+            });
+
+            html += `
+                <div class="summary-row summary-total">
+                    <span>Total Amount</span>
+                    <span>$${total}</span>
+                </div>
+            `;
+            summaryDiv.innerHTML = html;
+        }
+
+        // Create purchase in HOLD state
+        async function createPurchaseHold() {
+            const lineItems = selectedTimeslot.units
+                .filter(unit => quantities[unit.code] > 0)
+                .map(unit => ({
+                    code: unit.code,
+                    quantity: quantities[unit.code]
+                }));
+
+            const purchaseData = {
+                status: "hold",
+                items: [{
+                    privacy: selectedTimeslot.privacy,
+                    lineItems: lineItems,
+                    object: "scheduled_experience_purchase_item",
+                    source: "checkout",
+                    product: {
+                        id: selectedTimeslot.product
+                    },
+                    arrivalDate: selectedTimeslot.date,
+                    arrivalTime: selectedTimeslot.time
+                }],
+                lineItems: [{
+                    object: "payment_line_item",
+                    type: "payment",
+                    name: "Payment",
+                    payInFull: true,
+                    payment: {
+                        method: "cc"
+                    }
+                }],
+                seller: {
+                    id: SELLER_ID
+                },
+                customerName: document.getElementById('customer-name').value,
+                customerEmail: document.getElementById('customer-email').value,
+                phone: document.getElementById('customer-phone').value
+            };
+
+            const response = await fetch(`${API_BASE}/purchases`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(purchaseData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Failed to create purchase: ${response.status}`);
+            }
+
+            const purchase = await response.json();
+            currentPurchase = purchase;
+            organizerApiKey = purchase.organizer?.apiKey;
+
+            return purchase;
+        }
+
+        // Confirm payment with Stripe
+        async function confirmPayment() {
+
+            const { error } = await stripe.confirmPayment({
+                elements,
+                redirect: 'if_required'
+            });
+
+            if (error) {
+                throw new Error(error.message);
+            }
+
+            // Payment succeeded, commit the purchase
+            await commitPurchase();
+        }
+
+        // Commit the purchase
+        async function commitPurchase() {
+            if (!organizerApiKey || !currentPurchase?.id) {
+                throw new Error('Missing purchase data for commit');
+            }
+
+            const response = await fetch(`${API_BASE}/purchases/${currentPurchase.id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': organizerApiKey
+                },
+                body: JSON.stringify({
+                    status: "committed"
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to commit purchase: ${response.status}`);
+            }
+
+            const confirmedPurchase = await response.json();
+            showBookingConfirmation(confirmedPurchase);
+        }
+
+        // Show booking confirmation
+        function showBookingConfirmation() {
+            showGlobalLoading(false);
+
+            const confirmationDiv = document.getElementById('confirmation-details');
+            confirmationDiv.innerHTML = `
+                <p><strong>${currentPurchase.id} (${currentPurchase.customerEmail}) confirmed</strong></p>
+                <p>You will receive a confirmation email shortly.</p>
+            `;
+
+            showStep('step-success');
+        }
+
+        // Utility functions
+        function showStep(stepId) {
+            const steps = ['step-customer', 'step-timeslots', 'step-quantities', 'step-payment', 'step-success'];
+            steps.forEach(id => {
+                const element = document.getElementById(id);
+                if (id === stepId) {
+                    element.classList.remove('step-hidden');
+                } else {
+                    element.classList.add('step-hidden');
+                }
+            });
+        }
+
+        function showGlobalLoading(show) {
+            const loading = document.getElementById('global-loading');
+            if (show) {
+                loading.classList.remove('hidden');
+            } else {
+                loading.classList.add('hidden');
+            }
+        }
+
+        // Initialize the app when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
