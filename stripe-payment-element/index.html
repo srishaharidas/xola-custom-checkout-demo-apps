@@ -418,7 +418,7 @@
                 // Update header with actual date
                 const firstTimeslot = data.data[0];
                 if (firstTimeslot) {
-                    const date = new Date(firstTimeslot.arrivalDatetime);
+                    const date = new Date(firstTimeslot.date);
                     const dateStr = date.toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
@@ -446,23 +446,15 @@
                 const card = document.createElement('div');
                 card.className = 'timeslot-card';
 
-                // Format time
-                const arrivalTime = new Date(timeslot.arrivalDatetime);
-                const endTime = new Date(timeslot.end);
-
-                const timeFormat = {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
-                };
-
+                const time = timeslot.time.toString();
+                const formattedTime = `${time.substring(0,2)}:${time.substring(2)} ${parseInt(time) < 1200 ? 'AM' : 'PM'}`;
                 const unitsHtml = timeslot.units.map(unit =>
                     `${unit.code.charAt(0).toUpperCase() + unit.code.slice(1)}: $${unit.price}`
                 ).join(', ');
 
                 card.innerHTML = `
                     <div class="timeslot-time">
-                        ${arrivalTime.toLocaleTimeString('en-US', timeFormat)} - ${endTime.toLocaleTimeString('en-US', timeFormat)}
+                        ${formattedTime}
                     </div>
                     <div class="timeslot-capacity">
                         ${timeslot.capacity.open} spots available
