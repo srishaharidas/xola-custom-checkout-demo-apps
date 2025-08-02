@@ -306,7 +306,7 @@
             <!-- Step 2: Select Timeslot -->
             <div class="step step-hidden" id="step-timeslots">
                 <h2>Select your time</h2>
-                <div class="section-header" id="timeslots-header">Available times</div>
+                <h2 class="section-header" id="timeslots-header">Available times</h2>
                 <div id="timeslots-loading" class="loading">Loading available times...</div>
                 <div id="timeslots-container" class="timeslots-container"></div>
                 <div id="timeslots-error" class="error" style="display: none;"></div>
@@ -424,7 +424,7 @@
                         day: 'numeric',
                         year: 'numeric'
                     });
-                    document.getElementById('timeslots-header').textContent = `Available slots for ${dateStr} Select your time`;
+                    document.getElementById('timeslots-header').textContent = `Available slots for ${dateStr}`;
                 }
 
                 displayTimeslots(data.data);
