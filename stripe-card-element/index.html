@@ -456,8 +456,11 @@
                 card.onclick = () => selectTimeslot(timeslot, card);
 
                 // Format time
-                const time = timeslot.time.toString();
-                const formattedTime = `${time.substring(0,2)}:${time.substring(2)} ${parseInt(time) < 1200 ? 'AM' : 'PM'}`;
+                let formattedTime = "allDay"
+                if (timeslot.time) {
+                    const time = timeslot.time.toString();
+                    formattedTime = `${time.substring(0,2)}:${time.substring(2)} ${parseInt(time) < 1200 ? 'AM' : 'PM'}`;
+                }
 
                 const unitsHtml = timeslot.units.map(unit =>
                     `<div class="pricing-unit">

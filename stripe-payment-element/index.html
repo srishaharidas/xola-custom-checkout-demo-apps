@@ -446,8 +446,11 @@
                 const card = document.createElement('div');
                 card.className = 'timeslot-card';
 
-                const time = timeslot.time.toString();
-                const formattedTime = `${time.substring(0,2)}:${time.substring(2)} ${parseInt(time) < 1200 ? 'AM' : 'PM'}`;
+                let formattedTime = "allDay"
+                if (timeslot.time) {
+                    const time = timeslot.time.toString();
+                    formattedTime = `${time.substring(0,2)}:${time.substring(2)} ${parseInt(time) < 1200 ? 'AM' : 'PM'}`;
+                }
                 const unitsHtml = timeslot.units.map(unit =>
                     `${unit.code.charAt(0).toUpperCase() + unit.code.slice(1)}: $${unit.price}`
                 ).join(', ');
