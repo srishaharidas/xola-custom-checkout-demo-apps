@@ -448,7 +448,7 @@
 
                 let formattedTime = "allDay"
                 if (timeslot.time) {
-                    const time = timeslot.time.toString();
+                    const time = timeslot.time.toString().padStart(4, '0');;
                     formattedTime = `${time.substring(0,2)}:${time.substring(2)} ${parseInt(time) < 1200 ? 'AM' : 'PM'}`;
                 }
                 const unitsHtml = timeslot.units.map(unit =>
