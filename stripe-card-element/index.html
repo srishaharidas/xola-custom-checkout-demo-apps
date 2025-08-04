@@ -457,9 +457,15 @@
 
                 // Format time
                 let formattedTime = "allDay"
+
                 if (timeslot.time) {
-                    const time = timeslot.time.toString().padStart(4, '0');
-                    formattedTime = `${time.substring(0,2)}:${time.substring(2)} ${parseInt(time) < 1200 ? 'AM' : 'PM'}`;
+                    const minutes = timeslot.time % 100;
+                    let hours = (timeslot.time - minutes) / 100;
+                    if (hours === 0) hours = 12;
+                    if (hours > 12) hours -= 12;
+                    const hh = hours.toString().padStart(2, '0');
+                    const mm = minutes.toString().padStart(2, '0');
+                    formattedTime = `${hh}:${mm} ${parseInt(timeslot.time) < 1200 ? 'AM' : 'PM'}`;
                 }
 
                 const unitsHtml = timeslot.units.map(unit =>
