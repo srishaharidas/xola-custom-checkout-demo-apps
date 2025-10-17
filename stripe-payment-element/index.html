@@ -244,6 +244,29 @@
             background: white;
         }
 
+        #payment-request-button {
+            width: 100%;
+            height: 40px;
+            border: none;
+            border-radius: 6px;
+            background: #000;
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        #payment-request-button:hover {
+            background: #333;
+        }
+
+        #payment-request-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
         .error {
             color: #dc3545;
             font-size: 14px;
@@ -326,6 +349,7 @@
 
                 <h2>Payment Method</h2>
                 <form id="payment-form">
+                    <div id="payment-request-button"></div>
                     <div id="payment-element"></div>
                     <div id="card-errors" class="error"></div>
                     <button type="submit" id="submit-button" class="btn">Complete Booking</button>
@@ -362,6 +386,8 @@
         let currentPurchase = null;
         let organizerApiKey = null;
         let experience = null;
+        let paymentRequest = null;
+        let paymentRequestButton = null;
 
         // Initialize the app
         async function init() {
@@ -583,6 +609,10 @@
                 const clientSecret = paymentLineItem.payment.paymentIntent.clientSecret;
                 elements = stripe.elements({ clientSecret });
                 const paymentElement = elements.create("payment");
+                
+                // Initialize Payment Request Button for Apple Pay and Google Pay
+                await initializePaymentRequestButton(purchase);
+                
                 updateBookingSummary(purchase);
                 // Mount when payment step is shown
                 setTimeout(() => {
@@ -620,6 +650,75 @@
                 showGlobalLoading(false);
             }
         });
+
+        // Initialize Payment Request Button for Apple Pay and Google Pay
+        async function initializePaymentRequestButton(purchase) {
+            const paymentRequest = stripe.paymentRequest({
+                country: 'US',
+                currency: 'usd',
+                total: {
+                    label: experience?.name || 'Booking',
+                    amount: Math.round(purchase.amount * 100), // Convert to cents
+                },
+                requestPayerName: true,
+                requestPayerEmail: true,
+            });
+
+            const elements = stripe.elements({
+                clientSecret: purchase.lineItems.find(item =>
+                    item.type === 'payment' && item.status === 'pending' && item.payment && item.payment.paymentIntent
+                ).payment.paymentIntent.clientSecret,
+            });
+
+            const paymentRequestButton = elements.create('paymentRequestButton', {
+                paymentRequest,
+                style: {
+                    paymentRequestButton: {
+                        type: 'default',
+                        theme: 'dark',
+                        height: '40px',
+                    },
+                },
+            });
+
+            // Check if the Payment Request API is available
+            const canMakePayment = await paymentRequest.canMakePayment();
+            if (canMakePayment) {
+                paymentRequestButton.mount('#payment-request-button');
+                document.getElementById('payment-request-button').style.display = 'block';
+            } else {
+                document.getElementById('payment-request-button').style.display = 'none';
+            }
+
+            paymentRequest.on('paymentmethod', async (ev) => {
+                // Confirm the PaymentIntent without handling potential next actions (yet).
+                const {error: confirmError} = await stripe.confirmCardPayment(
+                    purchase.lineItems.find(item =>
+                        item.type === 'payment' && item.status === 'pending' && item.payment && item.payment.paymentIntent
+                    ).payment.paymentIntent.clientSecret,
+                    {payment_method: ev.paymentMethod.id},
+                    {handleActions: false}
+                );
+
+                if (confirmError) {
+                    // Report to the browser that the payment failed, prompting it to
+                    // re-show the payment interface, or show an error message and close
+                    // the payment interface.
+                    ev.complete('fail');
+                } else {
+                    // Report to the browser that the confirmation was successful, prompting
+                    // it to close the browser payment method collection interface.
+                    ev.complete('success');
+
+                    // Payment succeeded, commit the purchase
+                    await commitPurchase();
+                }
+            });
+
+            // Store references for cleanup if needed
+            window.paymentRequest = paymentRequest;
+            window.paymentRequestButton = paymentRequestButton;
+        }
 
         // Update booking summary
         function updateBookingSummary() {
