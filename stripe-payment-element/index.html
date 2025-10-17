@@ -244,6 +244,10 @@
             background: white;
         }
 
+        .wallet-only #payment-element {
+            display: none;
+        }
+
         #payment-request-button {
             width: 100%;
             height: 40px;
@@ -686,8 +690,12 @@
             if (canMakePayment) {
                 paymentRequestButton.mount('#payment-request-button');
                 document.getElementById('payment-request-button').style.display = 'block';
+                // Hide the regular credit card form when wallet payment is available
+                document.getElementById('payment-form').classList.add('wallet-only');
             } else {
                 document.getElementById('payment-request-button').style.display = 'none';
+                // Show the regular credit card form when wallet payment is not available
+                document.getElementById('payment-form').classList.remove('wallet-only');
             }
 
             paymentRequest.on('paymentmethod', async (ev) => {
